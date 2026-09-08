@@ -1,0 +1,32 @@
+name: Keep Alive Pinger
+
+on:
+  schedule:
+    # Trigger every 10 minutes (Render's timeout is 15 minutes)
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual run from GitHub interface
+
+jobs:
+  keep-alive:
+    name: Ping Services to Prevent Sleeping
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend Server
+        run: |
+          echo "Pinging FastAPI Backend..."
+          curl -I -s -o /dev/null -w "%{http_code}" https://skyvl-college-test.onrender.com/api/health
+      - name: Ping Frontend Server
+        run: |
+          echo "Pinging Vite Frontend..."
+          curl -I -s -o /dev/null -w "%{http_code}" https://skyvl-college-test.vercel.app/
+      - name: Ping Supabase Database
+        env:
+          SUPABASE_URL: https://bpbtadvjntbpgxsnrsqz.supabase.co
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwYnRhZHZqbnRicGd4c25yc3F6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTcwMTksImV4cCI6MjA5OTI3MzAxOX0.mlxyciH7RDrEE-Tc-MdwXqAwOpvQDcjnVKVQhkXYf6w
+        run: |
+          echo "Pinging Supabase Database REST Endpoint..."
+          curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/profiles?select=id&limit=1"
+
