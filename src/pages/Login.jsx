@@ -55,7 +55,7 @@ export default function Login() {
         <div className="auth-card">
           <div className="auth-header">
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              <img src="/logo.png" alt="S.A. Engineering College Logo" style={{ width: 110, height: 110, objectFit: 'contain', margin: '0 auto' }} />
+              <img src="/logo-removebg-preview.png" alt="S.A. Engineering College Logo" style={{ width: 110, height: 110, objectFit: 'contain', margin: '0 auto', display: 'block' }} />
             </div>
             <h2>S.A. Engineering College</h2>
             <p>Secure Online Examination Management System</p>

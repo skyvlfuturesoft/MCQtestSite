@@ -54,7 +54,7 @@ export default function StudentDashboard() {
         <div className="dashboard-grid">
           <aside className="sidebar-nav">
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <img src="/logo.png" alt="S.A. Engineering College Logo" style={{ width: 90, height: 90, objectFit: 'contain', margin: '0 auto' }} />
+              <img src="/logo-removebg-preview.png" alt="S.A. Engineering College Logo" style={{ width: 90, height: 90, objectFit: 'contain', margin: '0 auto', display: 'block' }} />
             </div>
             <h3 style={{ marginBottom: 20, textAlign: 'center' }}>Student Portal</h3>
             <div style={{ marginBottom: 20, textAlign: 'center' }}>
