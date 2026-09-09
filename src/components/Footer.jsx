@@ -1,105 +1,41 @@
-import { Shield, GitBranch as GithubIcon, Mail, MapPin } from 'lucide-react';
-
 export default function Footer() {
   return (
-    <footer className="footer" id="contact">
+    <footer className="footer-redesign" id="about">
       <div className="container">
-        <div className="footer-grid">
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 12,
-                background: 'rgba(255,255,255,0.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <Shield size={22} color="white" />
-              </div>
-              <h3 style={{ margin: 0 }}>SOEMS</h3>
-            </div>
-            <p>
-              Secure Online Examination Management System — A secure examination
-              platform built with modern web technologies for secure, scalable, and
-              intelligent online examinations.
-            </p>
-            <div style={{ marginTop: 20, display: 'flex', gap: 12 }}>
-              <a
-                href="#"
-                style={{
-                  width: 40, height: 40, borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.12)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'white', textDecoration: 'none',
-                  transition: 'background 0.3s',
-                }}
-                onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.25)'}
-                onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.12)'}
-              >
-                <GithubIcon size={18} />
-              </a>
-              <a
-                href="#"
-                style={{
-                  width: 40, height: 40, borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.12)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'white', textDecoration: 'none',
-                  transition: 'background 0.3s',
-                }}
-                onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.25)'}
-                onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.12)'}
-              >
-                <Mail size={18} />
-              </a>
-            </div>
-          </div>
+        <div className="footer-inner-content">
+          {/* Brand Left Side */}
+          <div className="footer-brand-side">
+            <div className="footer-logo-row" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <img 
+                src="/logo-removebg-preview.png" 
+                alt="S.A. Engineering College Logo" 
+                style={{ width: '64px', height: '64px', objectFit: 'contain', filter: 'drop-shadow(0 2px 6px rgba(15, 23, 42, 0.1))' }} 
+              />
 
-          <div>
-            <h3>Documentation</h3>
-            <ul className="footer-links">
-              <li><a href="#features">Features</a></li>
-              <li><a href="#architecture">Architecture</a></li>
-              <li><a href="#modules">Modules</a></li>
-              <li><a href="#database">Database</a></li>
-              <li><a href="#security">Security</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h3>Technology</h3>
-            <ul className="footer-links">
-              <li><a href="#techstack">React</a></li>
-              <li><a href="#techstack">FastAPI</a></li>
-              <li><a href="#techstack">Supabase</a></li>
-              <li><a href="#techstack">PostgreSQL</a></li>
-              <li><a href="#techstack">Vercel</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h3>Contact</h3>
-            <ul className="footer-links">
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <MapPin size={14} />
-                <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
                   S.A. Engineering College
                 </span>
-              </li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                <Mail size={14} />
-                <a href="mailto:contact@saec.ac.in">contact@saec.ac.in</a>
-              </li>
-            </ul>
-          </div>
-        </div>
+                <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#2563EB', textTransform: 'uppercase' }}>
+                  Online Examination System
+                </span>
+              </div>
+            </div>
 
-        <div className="footer-bottom">
-          <p>
-            © {new Date().getFullYear()} Secure Online Examination Management System.
-            S.A. Engineering College. Developed by Skyvlfuturesoft.
-          </p>
-          <p>
-            Built with React, FastAPI & Supabase by Skyvlfuturesoft
-          </p>
+            <div className="footer-brand-divider" />
+
+            <span className="footer-tagline">
+              A smarter way to evaluate
+            </span>
+          </div>
+
+          {/* Links Right Side */}
+          <ul className="footer-nav-links" id="contact">
+            <li><a href="#about">About</a></li>
+            <li><a href="#contact">Contact</a></li>
+            <li><a href="#privacy">Privacy Policy</a></li>
+            <li><a href="#terms">Terms of Use</a></li>
+          </ul>
         </div>
       </div>
     </footer>

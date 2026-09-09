@@ -18,20 +18,12 @@ const ViewResults = lazy(() => import('./pages/admin/ViewResults'));
 const KickLog = lazy(() => import('./pages/admin/KickLog'));
 const Analytics = lazy(() => import('./pages/admin/Analytics'));
 
-// Components (Lazy Loaded for 98%+ Performance)
+// Components (Lazy Loaded)
 const Navbar = lazy(() => import('./components/Navbar'));
 const Hero = lazy(() => import('./components/Hero'));
 const Features = lazy(() => import('./components/Features'));
-const Architecture = lazy(() => import('./components/Architecture'));
-const TechStack = lazy(() => import('./components/TechStack'));
-const Modules = lazy(() => import('./components/Modules'));
-const Security = lazy(() => import('./components/Security'));
 const Workflow = lazy(() => import('./components/Workflow'));
-const DatabaseSection = lazy(() => import('./components/Database'));
-const Dashboard = lazy(() => import('./components/Dashboard'));
-const Screenshots = lazy(() => import('./components/Screenshots'));
-const Testing = lazy(() => import('./components/Testing'));
-const FutureScope = lazy(() => import('./components/FutureScope'));
+const CtaBanner = lazy(() => import('./components/CtaBanner'));
 const Footer = lazy(() => import('./components/Footer'));
 
 const PageLoader = () => (
@@ -40,26 +32,16 @@ const PageLoader = () => (
   </div>
 );
 
-// Documentation Home Component
-function DocumentationHome() {
+// Landing Page Component matching reference mockup
+function LandingPage() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Navbar />
-      <main>
+      <main style={{ minHeight: '100vh', background: '#F8FAFC' }}>
         <Hero />
-        <hr className="section-divider" />
         <Features />
-        <Architecture />
-        <TechStack />
-        <Modules />
-        <DatabaseSection />
-        <Security />
         <Workflow />
-        <Dashboard />
-        <hr className="section-divider" />
-        <Screenshots />
-        <Testing />
-        <FutureScope />
+        <CtaBanner />
       </main>
       <Footer />
       <ScrollToTop />
@@ -73,8 +55,8 @@ export default function App() {
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Documentation Portal */}
-          <Route path="/" element={<DocumentationHome />} />
+          {/* Landing Portal */}
+          <Route path="/" element={<LandingPage />} />
           
           {/* Authentication */}
           <Route path="/login" element={<Login />} />

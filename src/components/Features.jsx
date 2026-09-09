@@ -1,96 +1,90 @@
 import { motion } from 'framer-motion';
-import {
-  UserCheck, LayoutDashboard, ClipboardList, BookOpen,
-  Timer, Send, MonitorOff, EyeOff,
-  Radio, Calculator, BarChart3, FileText,
-  Smartphone, Cloud, Cpu, KeyRound,
-  Activity, Moon
-} from 'lucide-react';
+import { FileText, Clock, ShieldCheck, BarChart3, Cpu, UserCheck, LayoutDashboard, Radio } from 'lucide-react';
 
-const features = [
-  { icon: <UserCheck size={24} />, title: 'Student Authentication', desc: 'Secure login with Supabase Auth, email verification, and session management.' },
-  { icon: <LayoutDashboard size={24} />, title: 'Admin Dashboard', desc: 'Comprehensive admin panel with real-time analytics and exam management.' },
-  { icon: <ClipboardList size={24} />, title: 'Exam Management', desc: 'Create, schedule, publish, and manage exams with intuitive controls.' },
-  { icon: <BookOpen size={24} />, title: 'Question Bank', desc: 'Organized question repository with categories, marks, and difficulty levels.' },
-  { icon: <Timer size={24} />, title: 'Server Timer', desc: 'Tamper-proof server-side countdown timer for fair exam duration control.' },
-  { icon: <Send size={24} />, title: 'Automatic Submission', desc: 'Auto-submit exams when time expires, preventing incomplete attempts.' },
-  { icon: <MonitorOff size={24} />, title: 'Tab Switch Detection', desc: 'Detects and logs when students switch browser tabs during exams.' },
-  { icon: <EyeOff size={24} />, title: 'Window Blur Detection', desc: 'Monitors window focus changes to prevent external resource access.' },
-  { icon: <Radio size={24} />, title: 'Realtime Monitoring', desc: 'Live dashboard showing student activity, violations, and progress.' },
-  { icon: <Calculator size={24} />, title: 'Score Calculation', desc: 'Instant automatic scoring with detailed breakdown per question.' },
-  { icon: <BarChart3 size={24} />, title: 'Analytics', desc: 'Visual charts and insights for exam performance and trends.' },
-  { icon: <FileText size={24} />, title: 'Report Generation', desc: 'Export comprehensive reports in multiple formats for analysis.' },
-  { icon: <Smartphone size={24} />, title: 'Responsive Design', desc: 'Fully responsive interface optimized for all screen sizes.' },
-  { icon: <Cloud size={24} />, title: 'Cloud Database', desc: 'Scalable PostgreSQL on Supabase with real-time subscriptions.' },
-  { icon: <Cpu size={24} />, title: 'FastAPI Backend', desc: 'High-performance Python REST API with async request handling.' },
-  { icon: <KeyRound size={24} />, title: 'Supabase Auth', desc: 'Enterprise-grade authentication with row-level security policies.' },
-  { icon: <Activity size={24} />, title: 'Realtime Dashboard', desc: 'Live updates via Supabase Realtime for instant data sync.' },
-  { icon: <Moon size={24} />, title: 'Dark/Light Ready', desc: 'Architecture supports theming with dark and light mode options.' },
+const mainHighlightFeatures = [
+  {
+    icon: <FileText size={26} color="#2563EB" />,
+    title: 'MCQ-Based Tests',
+    desc: 'Well-structured questions for better learning',
+  },
+  {
+    icon: <Clock size={26} color="#2563EB" />,
+    title: 'Timed Examinations',
+    desc: 'Stay focused with real-time countdown',
+  },
+  {
+    icon: <ShieldCheck size={26} color="#2563EB" />,
+    title: 'Secure Environment',
+    desc: 'Fair and protected examination process',
+  },
+  {
+    icon: <BarChart3 size={26} color="#2563EB" />,
+    title: 'Instant Results',
+    desc: 'Get your performance immediately after submission',
+  },
 ];
 
-const containerVariants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.06,
-    },
-  },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 40 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
-  },
-};
+const secondaryFeatures = [
+  { icon: <UserCheck size={22} />, title: 'Student Authentication', desc: 'Secure login with role-based access and verified sessions.' },
+  { icon: <LayoutDashboard size={22} />, title: 'Admin Dashboard', desc: 'Manage exams, questions, student attempts, and settings.' },
+  { icon: <Radio size={22} />, title: 'Live Monitoring', desc: 'Real-time anti-cheat surveillance and tab-switch detection.' },
+  { icon: <Cpu size={22} />, title: 'Automated Scoring', desc: 'Instant precision evaluation with zero manual grading delay.' },
+];
 
 export default function Features() {
   return (
-    <section className="section" id="features">
+    <section className="features-redesign" id="features">
       <div className="container">
-        <motion.div
-          className="section-header"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.6 }}
-        >
-          <div className="section-badge">
-            <Cpu size={16} />
-            Features
-          </div>
-          <h2 className="section-title">
-            Powerful Features for <span className="gradient-text">Secure Exams</span>
-          </h2>
-          <p className="section-subtitle">
-            Every feature is designed to ensure exam integrity, streamline administration,
-            and provide a seamless experience for students and administrators.
-          </p>
-        </motion.div>
-
-        <motion.div
-          className="features-grid"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-60px' }}
-        >
-          {features.map((feature, i) => (
-            <motion.div
-              className="feature-card"
+        {/* Primary 4 Feature Cards Row matching Reference Image */}
+        <div className="main-features-grid">
+          {mainHighlightFeatures.map((feat, i) => (
+            <motion.div 
               key={i}
-              variants={cardVariants}
+              className="main-feature-card"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1, duration: 0.5 }}
             >
-              <div className="icon-wrapper">
-                {feature.icon}
+              <div className="feature-icon-box">
+                {feat.icon}
               </div>
-              <h4>{feature.title}</h4>
-              <p>{feature.desc}</p>
+              <div className="feature-card-content">
+                <h3 className="feature-card-title">{feat.title}</h3>
+                <p className="feature-card-desc">{feat.desc}</p>
+              </div>
             </motion.div>
           ))}
+        </div>
+
+        {/* Section Divider & Additional Tech Features */}
+        <motion.div 
+          className="extended-features-header"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <span className="extended-badge">ENTERPRISE CAPABILITIES</span>
+          <h2 className="extended-title">Comprehensive Platform Features</h2>
         </motion.div>
+
+        <div className="secondary-features-grid">
+          {secondaryFeatures.map((feat, i) => (
+            <motion.div
+              key={i}
+              className="secondary-feature-card"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1, duration: 0.5 }}
+            >
+              <div className="sec-icon">{feat.icon}</div>
+              <h4>{feat.title}</h4>
+              <p>{feat.desc}</p>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </section>
   );
