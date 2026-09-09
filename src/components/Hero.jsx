@@ -3,12 +3,8 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Clock, CheckCircle2, Shield, Sparkles } from 'lucide-react';
 import InstructionsModal from './InstructionsModal';
 
-export default function Hero() {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedOption, setSelectedOption] = useState('Python');
-  const [timeLeft, setTimeLeft] = useState(2535); // 00:42:15 in seconds
-
-  // Live Countdown Timer tick for realistic feel
+function MockupTimer() {
+  const [timeLeft, setTimeLeft] = useState(2535);
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
@@ -22,6 +18,19 @@ export default function Hero() {
     const secs = String(seconds % 60).padStart(2, '0');
     return `${hrs}:${mins}:${secs}`;
   };
+
+  return (
+    <div className="mockup-timer">
+      <Clock size={16} color="#475569" />
+      <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748B', fontWeight: 600 }}>Time Left</div>
+      <div className="timer-countdown">{formatTime(timeLeft)}</div>
+    </div>
+  );
+}
+
+export default function Hero() {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedOption, setSelectedOption] = useState('Python');
 
   const questionNavItems = [
     { num: 1, status: 'answered' },
@@ -128,17 +137,13 @@ export default function Hero() {
               {/* Exam Header inside Mockup */}
               <div className="mockup-exam-nav">
                 <div className="mockup-logo">
-                  <img src="/logo-removebg-preview.png" alt="S.A. Engineering College Emblem" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
+                  <img src="/logo-removebg-preview.png" alt="S.A. Engineering College Emblem" width={32} height={32} loading="lazy" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
                   <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0F172A' }}>
                     S.A.EC Exam
                   </span>
                 </div>
 
-                <div className="mockup-timer">
-                  <Clock size={16} color="#475569" />
-                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748B', fontWeight: 600 }}>Time Left</div>
-                  <div className="timer-countdown">{formatTime(timeLeft)}</div>
-                </div>
+                <MockupTimer />
 
                 <button className="mockup-end-btn" onClick={() => alert('End Exam Clicked!')}>
                   End Exam

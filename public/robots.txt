@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mc-qtest-site.vercel.app/sitemap.xml

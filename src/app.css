@@ -484,6 +484,134 @@
   color: var(--text);
 }
 
+/* Kick Log Table Fixed Layout & Alignment Rules */
+.kick-log-table {
+  width: 100%;
+  min-width: 1280px;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.kick-log-table th,
+.kick-log-table td {
+  vertical-align: middle !important;
+  padding: 14px 16px;
+  box-sizing: border-box;
+}
+
+.kick-log-table th {
+  background: var(--lighter-blue);
+  font-weight: 600;
+  font-size: 0.88rem;
+  border-bottom: 1.5px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* Security trigger cell text wrapping */
+.kick-log-table td.trigger-cell {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: middle !important;
+}
+
+/* Strikes Cell & Centered Badge */
+.kick-log-table td.strikes-cell {
+  text-align: center;
+  vertical-align: middle !important;
+}
+
+.strikes-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.strikes-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #FEE2E2;
+  color: #DC2626;
+  border-radius: 12px;
+  padding: 4px 12px;
+  font-weight: 700;
+  line-height: 1.15;
+  min-width: 58px;
+  box-sizing: border-box;
+}
+
+.strikes-num {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.strikes-text {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Action Cells and Buttons */
+.kick-log-table td.action-cell-td {
+  text-align: center;
+  vertical-align: middle !important;
+}
+
+.reinstate-btn {
+  min-width: 88px;
+  height: 42px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background-color: #10B981;
+  color: #FFFFFF;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, transform 0.1s;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.25);
+  white-space: nowrap;
+}
+
+.reinstate-btn:hover {
+  background-color: #059669;
+}
+
+.grant-retake-btn {
+  min-width: 110px;
+  min-height: 42px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background-color: #F59E0B;
+  color: #FFFFFF;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  line-height: 1.2;
+  transition: background-color 0.2s, transform 0.1s;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.25);
+  white-space: normal;
+}
+
+.grant-retake-btn:hover {
+  background-color: #D97706;
+}
+
+
 /* Live Monitor Event Logs */
 .live-events-panel {
   background: #0F172A;

@@ -115,7 +115,7 @@ export default function AdminDashboard() {
         <div className="dashboard-grid">
           <aside className="sidebar-nav">
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <img src="/logo-removebg-preview.png" alt="S.A. Engineering College Logo" style={{ width: 90, height: 90, objectFit: 'contain', margin: '0 auto', display: 'block' }} />
+              <img src="/logo-removebg-preview.png" alt="S.A. Engineering College Logo" width={90} height={90} loading="lazy" style={{ width: 90, height: 90, objectFit: 'contain', margin: '0 auto', display: 'block' }} />
             </div>
             <h3 style={{ marginBottom: 20, textAlign: 'center' }}>Admin Portal</h3>
             <div style={{ marginBottom: 20, textAlign: 'center' }}>
@@ -129,7 +129,6 @@ export default function AdminDashboard() {
               <li><a href="#results" onClick={(e) => { e.preventDefault(); navigate('/admin/results'); }}>View Results</a></li>
               <li><a href="#kick-log" onClick={(e) => { e.preventDefault(); navigate('/admin/kick-log'); }}>Kick Log</a></li>
               <li><a href="#analytics" onClick={(e) => { e.preventDefault(); navigate('/admin/analytics'); }}>Analytics</a></li>
-              <li><a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Documentation</a></li>
               <li>
                 <a href="#logout" onClick={(e) => { e.preventDefault(); logout(); navigate('/login'); }} style={{ color: '#C62828' }}>
                   Sign Out

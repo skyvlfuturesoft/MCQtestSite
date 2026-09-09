@@ -54,7 +54,7 @@ export default function StudentDashboard() {
         <div className="dashboard-grid">
           <aside className="sidebar-nav">
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <img src="/logo-removebg-preview.png" alt="S.A. Engineering College Logo" style={{ width: 90, height: 90, objectFit: 'contain', margin: '0 auto', display: 'block' }} />
+              <img src="/logo-removebg-preview.png" alt="S.A. Engineering College Logo" width={90} height={90} loading="lazy" style={{ width: 90, height: 90, objectFit: 'contain', margin: '0 auto', display: 'block' }} />
             </div>
             <h3 style={{ marginBottom: 20, textAlign: 'center' }}>Student Portal</h3>
             <div style={{ marginBottom: 20, textAlign: 'center' }}>
@@ -64,7 +64,6 @@ export default function StudentDashboard() {
             <ul className="sidebar-links">
               <li><a href="#active" className="active" onClick={(e) => { e.preventDefault(); navigate('/student'); }}>Dashboard</a></li>
               <li><a href="#history" onClick={(e) => { e.preventDefault(); navigate('/student/history'); }}>My Test History</a></li>
-              <li><a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Documentation</a></li>
               <li>
                 <a href="#logout" onClick={(e) => { e.preventDefault(); logout(); navigate('/login'); }} style={{ color: '#C62828' }}>
                   Sign Out

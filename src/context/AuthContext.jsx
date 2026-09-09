@@ -39,11 +39,6 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: { name, email, password, role },
     });
-    if (data.session?.access_token) {
-      localStorage.setItem('soems_user', JSON.stringify(data.user));
-      localStorage.setItem('soems_session', JSON.stringify(data.session));
-      setUser(data.user);
-    }
     return data;
   };
 

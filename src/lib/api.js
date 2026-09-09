@@ -62,19 +62,41 @@ export async function api(endpoint, options = {}) {
 
     if (cleanEndpoint === '/api/auth/register') {
       const { name, email, password, role } = body;
+      const assignedRole = role || 'student';
+      const displayName = name || email.split('@')[0];
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { name, role }
+          data: { name: displayName, role: assignedRole }
         }
       });
       if (error) throw error;
+      if (!data.user) throw new Error('Registration failed — no user returned');
+
+      // Create or update student profile in profiles table
+      try {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          name: displayName,
+          email: data.user.email,
+          role: assignedRole
+        });
+      } catch (_) {
+        // Ignore duplicate profile insertion error if handled by trigger
+      }
 
       return {
-        user: { id: data.user.id, email: data.user.email },
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          name: displayName,
+          role: assignedRole
+        },
         session: {
-          access_token: data.session?.access_token || null
+          access_token: data.session?.access_token || null,
+          refresh_token: data.session?.refresh_token || null
         }
       };
     }
@@ -604,7 +626,7 @@ export async function api(endpoint, options = {}) {
         };
       });
 
-      return results;
+      return { attempts: results };
     }
 
     // LOG EVENT

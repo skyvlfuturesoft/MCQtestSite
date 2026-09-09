@@ -120,30 +120,47 @@ export default function KickLog() {
             </p>
           ) : (
             <div className="admin-table-wrapper">
-              <table className="admin-table">
+              <table className="admin-table kick-log-table">
+                <colgroup>
+                  <col style={{ width: '210px' }} />
+                  <col style={{ width: '110px' }} />
+                  <col style={{ width: '280px' }} />
+                  <col style={{ width: '90px' }} />
+                  <col style={{ width: '90px' }} />
+                  <col style={{ width: '110px' }} />
+                  <col style={{ width: '150px' }} />
+                  <col style={{ width: '110px' }} />
+                  <col style={{ width: '130px' }} />
+                </colgroup>
                 <thead>
                   <tr>
-                    <th>Student Name</th>
                     <th>Email</th>
-                    <th>Exam Title</th>
+                    <th>Title</th>
                     <th>Reason & Violations History</th>
-                    <th>Strikes</th>
+                    <th style={{ textAlign: 'center' }}>Strikes</th>
                     <th>Browser</th>
-                    <th>IP Address</th>
-                    <th>Kicked At</th>
-                    <th>Actions</th>
+                    <th>Address</th>
+                    <th>Date/Time</th>
+                    <th style={{ textAlign: 'center' }}>Reinstate</th>
+                    <th style={{ textAlign: 'center' }}>Grant Retake</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((kick) => (
                     <tr key={kick.id}>
-                      <td style={{ fontWeight: 600, color: 'var(--text)' }}>
-                        {kick.student_name || 'Student'}
+                      <td>
+                        <div style={{ fontWeight: 600, color: 'var(--text)', wordBreak: 'break-all' }}>
+                          {kick.email || kick.student_name || 'Student'}
+                        </div>
+                        {kick.student_name && kick.email && (
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                            {kick.student_name}
+                          </div>
+                        )}
                       </td>
-                      <td>{kick.email}</td>
-                      <td>{kick.exam_title}</td>
-                      <td style={{ minWidth: 250 }}>
-                        <div style={{ fontWeight: 600, color: '#C62828' }}>{kick.reason}</div>
+                      <td style={{ fontWeight: 500 }}>{kick.exam_title || 'Untitled Exam'}</td>
+                      <td className="trigger-cell">
+                        <div style={{ fontWeight: 600, color: '#C62828', marginBottom: 4 }}>{kick.reason}</div>
                         {kick.violations && kick.violations.length > 0 && (
                           <div style={{ marginTop: 8, fontSize: '0.75rem', backgroundColor: 'rgba(0,0,0,0.03)', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(0,0,0,0.05)' }}>
                             <div style={{ fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.65rem', marginBottom: 4 }}>
@@ -160,55 +177,37 @@ export default function KickLog() {
                           </div>
                         )}
                       </td>
-                      <td>
-                        <span className="badge-red">{kick.violation_count} Strikes</span>
-                      </td>
-                      <td>{kick.browser || '—'}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}>
-                        {kick.ip_address || '—'}
-                      </td>
-                      <td>{new Date(kick.created_at).toLocaleString()}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button
-                            className="btn"
-                            onClick={() => handleReinstate(kick.attempt_id)}
-                            style={{
-                              padding: '6px 12px',
-                              fontSize: '0.8rem',
-                              backgroundColor: '#10B981',
-                              color: '#FFFFFF',
-                              borderRadius: 'var(--radius-md)',
-                              border: 'none',
-                              cursor: 'pointer',
-                              fontWeight: 600
-                            }}
-                            title="Resume current exam attempt where student left off"
-                          >
-                            Reinstate
-                          </button>
-                          <button
-                            className="btn"
-                            onClick={() => handleGrantRetake(kick)}
-                            style={{
-                              padding: '6px 12px',
-                              fontSize: '0.8rem',
-                              backgroundColor: '#F59E0B',
-                              color: '#FFFFFF',
-                              borderRadius: 'var(--radius-md)',
-                              border: 'none',
-                              cursor: 'pointer',
-                              fontWeight: 600,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}
-                            title="Reset exam completely so student can retake from scratch"
-                          >
-                            <RotateCcw size={14} />
-                            Grant Retake
-                          </button>
+                      <td className="strikes-cell">
+                        <div className="strikes-content">
+                          <div className="strikes-badge">
+                            <span className="strikes-num">{kick.violation_count}</span>
+                            <span className="strikes-text">Strikes</span>
+                          </div>
                         </div>
+                      </td>
+                      <td>{kick.browser || 'Chrome'}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}>
+                        {kick.ip_address || '127.0.0.1'}
+                      </td>
+                      <td style={{ fontSize: '0.82rem' }}>{new Date(kick.created_at).toLocaleString()}</td>
+                      <td className="action-cell-td">
+                        <button
+                          className="btn reinstate-btn"
+                          onClick={() => handleReinstate(kick.attempt_id)}
+                          title="Resume current exam attempt where student left off"
+                        >
+                          Reinstate
+                        </button>
+                      </td>
+                      <td className="action-cell-td">
+                        <button
+                          className="btn grant-retake-btn"
+                          onClick={() => handleGrantRetake(kick)}
+                          title="Reset exam completely so student can retake from scratch"
+                        >
+                          <RotateCcw size={14} />
+                          <span>Grant Retake</span>
+                        </button>
                       </td>
                     </tr>
                   ))}

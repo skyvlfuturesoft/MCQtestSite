@@ -39,6 +39,9 @@ export default function Navbar() {
               <img 
                 src="/logo-removebg-preview.png" 
                 alt="S.A. Engineering College Logo" 
+                width={105}
+                height={105}
+                fetchPriority="high"
                 style={{ 
                   width: '105px', 
                   height: '105px', 
@@ -94,7 +97,7 @@ export default function Navbar() {
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-          <img src="/logo-removebg-preview.png" alt="S.A. Engineering College Logo" style={{ width: '96px', height: '96px', objectFit: 'contain' }} />
+          <img src="/logo-removebg-preview.png" alt="S.A. Engineering College Logo" width={96} height={96} loading="lazy" style={{ width: '96px', height: '96px', objectFit: 'contain' }} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0F172A' }}>
               S.A. Engineering College

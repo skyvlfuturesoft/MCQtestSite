@@ -19,20 +19,11 @@ export default function Register() {
     setError('');
     setSubmitting(true);
     try {
-      const data = await register(name, email, password, role);
-      // If session token exists (email confirmation disabled) → auto login & redirect
-      if (data.session?.access_token) {
-        if (role === 'admin') {
-          navigate('/admin');
-        } else {
-          navigate('/student');
-        }
-      } else {
-        // Email confirmation is enabled — redirect to login with a success notice
-        navigate('/login', {
-          state: { message: 'Registration successful! Please check your email to confirm your account, then log in.' }
-        });
-      }
+      await register(name, email, password, role);
+      // Always redirect to login page after registration
+      navigate('/login', {
+        state: { message: 'Registration successful! Please log in with your credentials.' }
+      });
     } catch (err) {
       setError(err.message || 'Registration failed');
     } finally {
@@ -46,7 +37,7 @@ export default function Register() {
         <div className="auth-card">
           <div className="auth-header">
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              <img src="/logo-removebg-preview.png" alt="S.A. Engineering College Logo" style={{ width: 110, height: 110, objectFit: 'contain', margin: '0 auto', display: 'block' }} />
+              <img src="/logo-removebg-preview.png" alt="S.A. Engineering College Logo" width={110} height={110} loading="lazy" style={{ width: 110, height: 110, objectFit: 'contain', margin: '0 auto', display: 'block' }} />
             </div>
             <h2>S.A. Engineering College</h2>
             <p>Secure Online Examination Management System</p>

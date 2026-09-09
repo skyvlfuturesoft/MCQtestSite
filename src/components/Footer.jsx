@@ -9,6 +9,9 @@ export default function Footer() {
               <img 
                 src="/logo-removebg-preview.png" 
                 alt="S.A. Engineering College Logo" 
+                width={64}
+                height={64}
+                loading="lazy"
                 style={{ width: '64px', height: '64px', objectFit: 'contain', filter: 'drop-shadow(0 2px 6px rgba(15, 23, 42, 0.1))' }} 
               />
 
@@ -31,10 +34,10 @@ export default function Footer() {
 
           {/* Links Right Side */}
           <ul className="footer-nav-links" id="contact">
-            <li><a href="#about">About</a></li>
-            <li><a href="#contact">Contact</a></li>
-            <li><a href="#privacy">Privacy Policy</a></li>
-            <li><a href="#terms">Terms of Use</a></li>
+            <li><a href="#about" aria-label="About S.A. Engineering College">About</a></li>
+            <li><a href="#contact" aria-label="Contact examination system support">Contact</a></li>
+            <li><a href="#privacy" aria-label="View Privacy Policy">Privacy Policy</a></li>
+            <li><a href="#terms" aria-label="View Terms of Use">Terms of Use</a></li>
           </ul>
         </div>
       </div>

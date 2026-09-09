@@ -47,6 +47,7 @@ export default function InstructionsModal({ isOpen, onClose }) {
           {/* Close Button */}
           <button 
             onClick={onClose}
+            aria-label="Close modal"
             style={{
               position: 'absolute',
               top: '20px',
