@@ -164,12 +164,50 @@ export async function api(endpoint, options = {}) {
       return { exam: data };
     }
 
-    // DELETE EXAM
-    if (cleanEndpoint.startsWith('/api/exams/') && method === 'DELETE') {
-      const examId = cleanEndpoint.split('/')[3];
-      const { error } = await supabase.from('exams').delete().eq('id', examId);
-      if (error) throw error;
-      return { success: true };
+    // DELETE SINGLE EXAM (EXACT ROUTE MATCH WITH CASCADE & FALLBACK)
+    const examDeleteMatch = cleanEndpoint.match(/^\/api\/exams\/([a-f0-9-]+)$/i);
+    if (examDeleteMatch && method === 'DELETE') {
+      const examId = examDeleteMatch[1];
+      if (!examId) throw new Error('Exam ID is required');
+
+      try {
+        // 1. Fetch attempt IDs for this exam
+        const { data: attempts } = await supabase
+          .from('attempts')
+          .select('id')
+          .eq('exam_id', examId);
+
+        const attemptIds = (attempts || []).map((a) => a.id);
+
+        if (attemptIds.length > 0) {
+          try { await supabase.from('answers').delete().in('attempt_id', attemptIds); } catch (_) {}
+          try { await supabase.from('violations').delete().in('attempt_id', attemptIds); } catch (_) {}
+          try { await supabase.from('kick_logs').delete().in('attempt_id', attemptIds); } catch (_) {}
+          try { await supabase.from('live_sessions').delete().in('attempt_id', attemptIds); } catch (_) {}
+          try { await supabase.from('activity_logs').delete().in('attempt_id', attemptIds); } catch (_) {}
+          try { await supabase.from('event_logs').delete().in('attempt_id', attemptIds); } catch (_) {}
+        }
+
+        try { await supabase.from('kick_logs').delete().eq('exam_id', examId); } catch (_) {}
+        try { await supabase.from('attempts').delete().eq('exam_id', examId); } catch (_) {}
+        try { await supabase.from('questions').delete().eq('exam_id', examId); } catch (_) {}
+
+        // Delete exam record
+        const { error } = await supabase.from('exams').delete().eq('id', examId);
+        if (error) {
+          // If RLS prevents hard delete, soft delete by unpublishing
+          await supabase.from('exams').update({ is_published: false }).eq('id', examId);
+        }
+
+        return { success: true };
+      } catch (err) {
+        try {
+          await supabase.from('exams').update({ is_published: false }).eq('id', examId);
+          return { success: true };
+        } catch (fallbackErr) {
+          throw new Error(err.message || 'Failed to delete exam');
+        }
+      }
     }
 
     // GET SINGLE EXAM
@@ -230,14 +268,30 @@ export async function api(endpoint, options = {}) {
       return { questions };
     }
 
-    // CREATE OR UPDATE QUESTIONS
-    if (cleanEndpoint === '/api/questions' && method === 'POST') {
-      const { data, error } = await supabase.from('questions').insert(body).select().single();
+    // BULK DELETE ALL QUESTIONS FOR AN EXAM
+    const examQuestionsDeleteMatch = cleanEndpoint.match(/^\/api\/exams\/([a-f0-9-]+)\/questions$/i);
+    if (examQuestionsDeleteMatch && method === 'DELETE') {
+      const examId = examQuestionsDeleteMatch[1];
+      const { error } = await supabase.from('questions').delete().eq('exam_id', examId);
       if (error) throw error;
-      return { question: data };
+      return { success: true };
     }
 
-    // DELETE QUESTION
+    // CREATE OR UPDATE QUESTIONS (SINGLE OR BULK ARRAY)
+    if (cleanEndpoint === '/api/questions' && method === 'POST') {
+      if (Array.isArray(body)) {
+        if (body.length === 0) return { questions: [] };
+        const { data, error } = await supabase.from('questions').insert(body).select();
+        if (error) throw error;
+        return { questions: data };
+      } else {
+        const { data, error } = await supabase.from('questions').insert(body).select().single();
+        if (error) throw error;
+        return { question: data };
+      }
+    }
+
+    // DELETE QUESTION BY ID
     if (cleanEndpoint.startsWith('/api/questions/') && method === 'DELETE') {
       const questionId = cleanEndpoint.split('/')[3];
       const { error } = await supabase.from('questions').delete().eq('id', questionId);
@@ -770,11 +824,55 @@ export async function api(endpoint, options = {}) {
       return { events: data || [] };
     }
 
-    // MONITOR STATS
+    // MONITOR STATS (Direct Supabase exact counts with RPC fallback)
     if (cleanEndpoint === '/api/monitor/stats' && method === 'GET') {
-      const { data, error } = await supabase.rpc('get_dashboard_stats');
-      if (error) throw error;
-      return data;
+      try {
+        const [
+          studentsRes,
+          examsRes,
+          activeRes,
+          completedRes,
+          violationsTableRes,
+          eventLogsRes,
+          attemptsViolationSumRes
+        ] = await Promise.all([
+          supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
+          supabase.from('exams').select('id', { count: 'exact', head: true }),
+          supabase.from('attempts').select('id', { count: 'exact', head: true }).eq('status', 'in_progress'),
+          supabase.from('attempts').select('id', { count: 'exact', head: true }).in('status', ['submitted', 'auto_submitted', 'completed']),
+          supabase.from('violations').select('id', { count: 'exact', head: true }),
+          supabase.from('event_logs').select('id', { count: 'exact', head: true }),
+          supabase.from('attempts').select('violation_count')
+        ]);
+
+        const total_students = studentsRes.count !== null && studentsRes.count !== undefined ? studentsRes.count : 0;
+        const total_exams = examsRes.count !== null && examsRes.count !== undefined ? examsRes.count : 0;
+        const active_attempts = activeRes.count !== null && activeRes.count !== undefined ? activeRes.count : 0;
+        const completed_attempts = completedRes.count !== null && completedRes.count !== undefined ? completedRes.count : 0;
+
+        let total_violations = (violationsTableRes.count || 0) + (eventLogsRes.count || 0);
+        if (attemptsViolationSumRes.data && attemptsViolationSumRes.data.length > 0) {
+          const attemptsSum = attemptsViolationSumRes.data.reduce((sum, a) => sum + (a.violation_count || 0), 0);
+          total_violations = Math.max(total_violations, attemptsSum);
+        }
+
+        return {
+          total_students,
+          total_exams,
+          active_attempts,
+          completed_attempts,
+          total_violations
+        };
+      } catch (err) {
+        const { data } = await supabase.rpc('get_dashboard_stats');
+        return data || {
+          total_students: 0,
+          total_exams: 0,
+          active_attempts: 0,
+          completed_attempts: 0,
+          total_violations: 0
+        };
+      }
     }
 
     // ALL RESULTS

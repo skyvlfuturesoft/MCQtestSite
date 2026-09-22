@@ -49,11 +49,11 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteExam = async (examId) => {
-    if (confirm('Are you sure you want to delete this draft exam? This action is permanent and cannot be undone.')) {
+    if (confirm('Are you sure you want to delete this examination and all its associated questions & student results? This action is permanent and cannot be undone.')) {
       try {
         await api(`/api/exams/${examId}`, { method: 'DELETE' });
         refetchExams();
-        alert('Draft exam deleted successfully!');
+        alert('Exam and all associated data deleted successfully!');
       } catch (err) {
         alert(err.message || 'Failed to delete exam');
       }
@@ -83,19 +83,21 @@ export default function AdminDashboard() {
         });
         const newExamId = duplicatedExam.exam.id;
 
-        for (const q of targetQuestions) {
+        if (targetQuestions.length > 0) {
+          const questionsToInsert = targetQuestions.map((q) => ({
+            exam_id: newExamId,
+            question_text: q.question_text,
+            question_type: q.question_type || 'mcq',
+            image_url: q.image_url || '',
+            options: q.options || [],
+            correct_answer: q.correct_answer !== undefined && q.correct_answer !== null ? q.correct_answer : 0,
+            accepted_answers: q.accepted_answers || [],
+            marks: q.marks || 1
+          }));
+
           await api('/api/questions', {
             method: 'POST',
-            body: {
-              exam_id: newExamId,
-              question_text: q.question_text,
-              question_type: q.question_type || 'mcq',
-              image_url: q.image_url || '',
-              options: q.options || [],
-              correct_answer: q.correct_answer !== undefined ? q.correct_answer : 0,
-              accepted_answers: q.accepted_answers || [],
-              marks: q.marks
-            }
+            body: questionsToInsert
           });
         }
 

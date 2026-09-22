@@ -83,6 +83,80 @@ export default function CreateExam() {
     }
   };
 
+  const downloadSamplePDF = async () => {
+    try {
+      let jsPDFLib = window.jspdf?.jsPDF;
+      if (!jsPDFLib) {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = () => reject(new Error('Failed to load PDF generation library'));
+          document.head.appendChild(script);
+        });
+        jsPDFLib = window.jspdf.jsPDF;
+      }
+
+      const doc = new jsPDFLib();
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Sample MCQ Questions for Online Exam', 14, 20);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Upload this formatted PDF directly to import questions automatically.', 14, 28);
+
+      const content = [
+        'Question 1: What is the capital of France?',
+        'A) London',
+        'B) Paris',
+        'C) Berlin',
+        'D) Madrid',
+        'Ans: B',
+        'Marks: 1',
+        '',
+        'Question 2: Consider the following code snippet:',
+        'int x = 15;',
+        'int y = 25;',
+        'What is the output of System.out.println(x + y)?',
+        'A) 1525',
+        'B) 40',
+        'C) 375',
+        'D) Error',
+        'Ans: B',
+        'Marks: 2',
+        '',
+        'Question 3: Which planet is known as the Red Planet?',
+        'A) Earth',
+        'B) Mars',
+        'C) Jupiter',
+        'D) Venus',
+        'Ans: B',
+        'Marks: 1',
+      ];
+
+      let y = 38;
+      content.forEach((line) => {
+        if (line.startsWith('Question')) {
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(15, 23, 42);
+        } else if (line.startsWith('Ans:')) {
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(5, 150, 105);
+        } else {
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(51, 65, 85);
+        }
+        doc.text(line, 14, y);
+        y += 6;
+      });
+
+      doc.save('sample_mcq_questions.pdf');
+    } catch (err) {
+      alert('Could not download sample PDF: ' + err.message);
+    }
+  };
+
   const parseCSVLine = (str) => {
     const arr = [];
     let quote = false;
@@ -103,43 +177,94 @@ export default function CreateExam() {
   };
 
   const parseTextToQuestions = (rawText) => {
+    if (!rawText) return [];
     const questionsList = [];
-    const blocks = rawText.split(/(?=(?:Q\d+[\.:]|\b\d+[\.:]))/gi);
+
+    // Pre-split text into question blocks matching 1. [Topic], Q1., Question 1:, "1. [Topic]..."
+    const blocks = rawText.split(/(?=(?:(?:^|\s+)"?Q(?:uestion)?\s*\d+[\.:\)]|(?:^|\n|\r)\s*"?\d+[\.:\)]\s+[A-Z\[]))/gi);
+
     for (const block of blocks) {
-      const trimmed = block.trim();
+      let trimmed = block.trim();
       if (!trimmed) continue;
 
-      const lines = trimmed.split('\n').map((l) => l.trim()).filter(Boolean);
-      if (lines.length < 3) continue;
+      // Strip quotes around block or lines
+      trimmed = trimmed.replace(/^"|"$/g, '').trim();
 
-      const qLine = lines[0].replace(/^(?:Q\d+[\.:]|\b\d+[\.:])\s*/i, '');
-      const optA = (lines.find((l) => /^A[\)\.:]/i.test(l)) || '').replace(/^A[\)\.:]\s*/i, '');
-      const optB = (lines.find((l) => /^B[\)\.:]/i.test(l)) || '').replace(/^B[\)\.:]\s*/i, '');
-      const optC = (lines.find((l) => /^C[\)\.:]/i.test(l)) || '').replace(/^C[\)\.:]\s*/i, '');
-      const optD = (lines.find((l) => /^D[\)\.:]/i.test(l)) || '').replace(/^D[\)\.:]\s*/i, '');
+      // Extract Question text: everything between header 1. and Option A
+      const qMatch = trimmed.match(/^(?:Q(?:uestion)?\s*\d+[\.:\)]|"?\d+[\.:\)]"?)\s*(.*?)(?=\s*(?:["]?A[\)\.:]|[\(]A[\)]|Option\s*A[\.:]?))/is);
+      let question_text = qMatch ? qMatch[1].trim() : '';
 
-      const ansLine = lines.find((l) => /^(?:Ans|Answer|Correct)[\.:]/i.test(l)) || '';
+      // Fallback: If no Option A tag is matched, check first line
+      if (!question_text) {
+        const firstLine = trimmed.split('\n')[0] || '';
+        question_text = firstLine.replace(/^(?:Q(?:uestion)?\s*\d+[\.:\)]|"?\d+[\.:\)]"?)\s*/i, '').trim();
+      }
+
+      // Clean quiz title preamble or header clutter if present
+      question_text = question_text
+        .replace(/^APTITUDE\s+PRACTICE\s+QUIZ\s*/i, '')
+        .replace(/^\d+\s+Random\s+Multiple-Choice\s+Questions\s+with\s+Answers\s*/i, '')
+        .replace(/^.*?-\s*\d+\s*MCQs\s*with\s*Answers\s*/i, '')
+        .replace(/"/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      // Extract Option A
+      const optAMatch = trimmed.match(/(?:["]?A[\)\.:]|[\(]A[\)]|Option\s*A[\.:]?)\s*(.*?)(?=\s*(?:["]?B[\)\.:]|[\(]B[\)]|Option\s*B[\.:]?))/is);
+      let optA = optAMatch ? optAMatch[1].trim() : '';
+
+      // Extract Option B
+      const optBMatch = trimmed.match(/(?:["]?B[\)\.:]|[\(]B[\)]|Option\s*B[\.:]?)\s*(.*?)(?=\s*(?:["]?C[\)\.:]|[\(]C[\)]|Option\s*C[\.:]?))/is);
+      let optB = optBMatch ? optBMatch[1].trim() : '';
+
+      // Extract Option C
+      const optCMatch = trimmed.match(/(?:["]?C[\)\.:]|[\(]C[\)]|Option\s*C[\.:]?)\s*(.*?)(?=\s*(?:["]?D[\)\.:]|[\(]D[\)]|Option\s*D[\.:]?))/is);
+      let optC = optCMatch ? optCMatch[1].trim() : '';
+
+      // Extract Option D
+      const optDMatch = trimmed.match(/(?:["]?D[\)\.:]|[\(]D[\)]|Option\s*D[\.:]?)\s*(.*?)(?=\s*(?:["]?Ans|Answer|Correct|Marks|$))/is);
+      let optD = optDMatch ? optDMatch[1].trim() : '';
+
+      // Clean quotes & multi-line noise from options
+      optA = optA.replace(/^"|"$/g, '').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      optB = optB.replace(/^"|"$/g, '').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      optC = optC.replace(/^"|"$/g, '').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      optD = optD.replace(/^"|"$/g, '').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+      // Extract Correct Answer
+      const ansMatch = trimmed.match(/(?:Ans|Answer|Correct)[\.:\-]?\s*(.*?)(?=\s*(?:Marks|$))/is);
       let correct_answer = 0;
-      if (/B/i.test(ansLine) || /Option B/i.test(ansLine)) correct_answer = 1;
-      else if (/C/i.test(ansLine) || /Option C/i.test(ansLine)) correct_answer = 2;
-      else if (/D/i.test(ansLine) || /Option D/i.test(ansLine)) correct_answer = 3;
+      if (ansMatch) {
+        const ansStr = ansMatch[1].trim().toUpperCase();
+        if (/\bB\b|OPTION\s*B|2/i.test(ansStr)) correct_answer = 1;
+        else if (/\bC\b|OPTION\s*C|3/i.test(ansStr)) correct_answer = 2;
+        else if (/\bD\b|OPTION\s*D|4/i.test(ansStr)) correct_answer = 3;
+        else if (/\bA\b|OPTION\s*A|1/i.test(ansStr)) correct_answer = 0;
+      }
 
-      const marksLine = lines.find((l) => /Marks[\.:]/i.test(l)) || '';
-      const marksMatch = marksLine.match(/\d+/);
-      const marks = marksMatch ? parseInt(marksMatch[0]) : 1;
+      // Extract Marks
+      const marksMatch = trimmed.match(/Marks[\.:\-]?\s*(\d+)/i);
+      const marks = marksMatch ? parseInt(marksMatch[1]) : 1;
 
-      if (qLine && (optA || optB)) {
+      // Only add valid questions that have text and at least 2 options
+      if (question_text && (optA || optB)) {
         questionsList.push({
-          question_text: qLine,
+          question_text,
           question_type: 'mcq',
           image_url: '',
-          options: [optA || 'Option A', optB || 'Option B', optC || 'Option C', optD || 'Option D'],
+          options: [
+            optA || 'Option A',
+            optB || 'Option B',
+            optC || 'Option C',
+            optD || 'Option D'
+          ],
           correct_answer,
           accepted_answers: [''],
           marks
         });
       }
     }
+
     return questionsList;
   };
 
@@ -195,7 +320,7 @@ export default function CreateExam() {
           }
         }
 
-        // If simple CSV line parser didn't find questions, try text/PDF block parser
+        // If simple CSV line parser didn't find questions, try text block parser
         const finalQuestions = importedQuestions.length > 0 ? importedQuestions : parseTextToQuestions(text);
 
         if (finalQuestions.length > 0) {
@@ -283,18 +408,41 @@ export default function CreateExam() {
         setImportStatusMsg('Error reading file: ' + err.message);
       }
     } else if (ext === 'pdf') {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const text = evt.target.result;
-        const questionsList = parseTextToQuestions(text);
+      setImportStatusMsg('⌛ Extracting text from PDF document...');
+      try {
+        let pdfjsLib = window.pdfjsLib;
+        if (!pdfjsLib) {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
+          await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('Failed to load PDF extraction library.'));
+            document.head.appendChild(script);
+          });
+          pdfjsLib = window.pdfjsLib;
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        }
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map((item) => item.str).join(' ');
+          fullText += pageText + '\n';
+        }
+
+        const questionsList = parseTextToQuestions(fullText);
         if (questionsList.length > 0) {
           setParsedQuestions(questionsList);
-          setImportStatusMsg(`✅ Successfully extracted ${questionsList.length} questions from PDF text!`);
+          setImportStatusMsg(`✅ Successfully extracted ${questionsList.length} questions from PDF (${pdf.numPages} pages)!`);
         } else {
-          setImportStatusMsg('❌ Could not parse PDF text automatically. Please use the "Paste PDF / Raw Text" tab.');
+          setImportStatusMsg('❌ Could not parse PDF text automatically. Make sure questions follow Q1... A)... B)... Ans: A format or try the "Paste PDF / Raw Text" tab.');
         }
-      };
-      reader.readAsText(file);
+      } catch (pdfErr) {
+        setImportStatusMsg('Failed to process PDF: ' + pdfErr.message);
+      }
     }
   };
 
@@ -577,12 +725,8 @@ export default function CreateExam() {
           body: { title, description, duration, is_published: true }
         });
 
-        // Delete old questions and re-insert updated ones
-        const oldQsRes = await api(`/api/exams/${examIdToUse}/questions`);
-        const oldQuestions = oldQsRes.questions || [];
-        for (const oldQ of oldQuestions) {
-          await api(`/api/questions/${oldQ.id}`, { method: 'DELETE' });
-        }
+        // Delete old questions in single bulk call
+        await api(`/api/exams/${examIdToUse}/questions`, { method: 'DELETE' });
       } else {
         // Create a brand new exam only when the admin hits Save
         const examRes = await api('/api/exams', {
@@ -592,22 +736,23 @@ export default function CreateExam() {
         examIdToUse = examRes.exam.id;
       }
 
-      // Insert all questions
-      for (const q of questions) {
-        await api('/api/questions', {
-          method: 'POST',
-          body: {
-            exam_id: examIdToUse,
-            question_text: q.question_text,
-            question_type: q.question_type,
-            image_url: q.image_url || '',
-            options: q.options || [],
-            correct_answer: parseInt(q.correct_answer) || 0,
-            accepted_answers: q.accepted_answers || [],
-            marks: q.marks
-          }
-        });
-      }
+      // Map all questions for single bulk insertion
+      const questionsToInsert = questions.map((q) => ({
+        exam_id: examIdToUse,
+        question_text: q.question_text,
+        question_type: q.question_type,
+        image_url: q.image_url || '',
+        options: q.options || [],
+        correct_answer: parseInt(q.correct_answer) || 0,
+        accepted_answers: q.accepted_answers || [],
+        marks: parseInt(q.marks) || 1
+      }));
+
+      // Insert all questions in single atomic API request
+      await api('/api/questions', {
+        method: 'POST',
+        body: questionsToInsert
+      });
 
       // Synchronize total_marks on existing attempts for this exam
       const newExamTotalMarks = questions.reduce((sum, q) => sum + (parseInt(q.marks) || 1), 0);
@@ -867,12 +1012,13 @@ export default function CreateExam() {
 
                 <div className="form-group">
                   <label>Question Text</label>
-                  <input
-                    type="text"
+                  <textarea
                     className="form-input"
-                    placeholder="Enter the question here"
+                    placeholder="Enter the question text here..."
                     value={q.question_text}
                     onChange={(e) => handleQuestionChange(qIdx, 'question_text', e.target.value)}
+                    rows={2}
+                    style={{ width: '100%', fontFamily: 'inherit', resize: 'vertical', minHeight: 60, lineHeight: 1.4 }}
                     required
                   />
                 </div>
@@ -886,12 +1032,13 @@ export default function CreateExam() {
                           <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
                             Option {String.fromCharCode(65 + optIdx)}
                           </label>
-                          <input
-                            type="text"
+                          <textarea
                             className="form-input"
                             placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
                             value={option}
                             onChange={(e) => handleOptionChange(qIdx, optIdx, e.target.value)}
+                            rows={2}
+                            style={{ width: '100%', fontFamily: 'inherit', resize: 'vertical', minHeight: 48, lineHeight: 1.4 }}
                             required
                           />
                         </div>
@@ -922,14 +1069,14 @@ export default function CreateExam() {
                     </label>
                     {q.accepted_answers.map((answer, ansIdx) => (
                       <div key={ansIdx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                        <input
-                          type="text"
+                        <textarea
                           className="form-input"
                           placeholder={`Accepted Answer Option ${ansIdx + 1}`}
                           value={answer}
                           onChange={(e) => handleAcceptedAnswerChange(qIdx, ansIdx, e.target.value)}
+                          rows={1}
                           required
-                          style={{ flex: 1, marginBottom: 0 }}
+                          style={{ flex: 1, marginBottom: 0, fontFamily: 'inherit', resize: 'vertical', minHeight: 38, lineHeight: 1.4 }}
                         />
                         {q.accepted_answers.length > 1 && (
                           <button
@@ -1028,9 +1175,9 @@ export default function CreateExam() {
             }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1E293B' }}>Download Sample Templates:</div>
-                <div style={{ fontSize: '0.78rem', color: '#64748B' }}>Ready-to-fill files with exact column headers</div>
+                <div style={{ fontSize: '0.78rem', color: '#64748B' }}>Ready-to-fill files with exact headers and formatting</div>
               </div>
-              <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={downloadSampleCSV}
@@ -1048,6 +1195,15 @@ export default function CreateExam() {
                 >
                   <FileSpreadsheet size={14} style={{ color: '#0284C7' }} />
                   Sample Excel (.xlsx)
+                </button>
+                <button
+                  type="button"
+                  onClick={downloadSamplePDF}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.8rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6, background: '#FFFFFF' }}
+                >
+                  <FileText size={14} style={{ color: '#DC2626' }} />
+                  Sample PDF
                 </button>
               </div>
             </div>
@@ -1151,6 +1307,50 @@ export default function CreateExam() {
             {/* TAB 3: FORMAT GUIDE */}
             {importTab === 'guide' && (
               <div>
+                <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem', color: '#1E293B' }}>📄 PDF Document Sample Structure for 100% Error-Free Upload</h4>
+                <div style={{
+                  background: '#1E293B', color: '#F8FAFC', padding: 16, borderRadius: 10,
+                  fontFamily: 'Consolas, Monaco, monospace', fontSize: '0.82rem', lineHeight: 1.5,
+                  marginBottom: 20, overflowX: 'auto', border: '1px solid #334155'
+                }}>
+                  {`Question 1: What is the capital of France?
+A) London
+B) Paris
+C) Berlin
+D) Madrid
+Ans: B
+Marks: 1
+
+Question 2: Which planet is known as the Red Planet?
+A) Earth
+B) Mars
+C) Jupiter
+D) Venus
+Ans: B
+Marks: 1
+
+Question 3: What is 12 multiplied by 8?
+A) 84
+B) 96
+C) 108
+D) 92
+Ans: B
+Marks: 2`}
+                </div>
+
+                <div style={{
+                  background: '#EFF6FF', border: '1px solid #BFDBFE', padding: 12, borderRadius: 8,
+                  fontSize: '0.82rem', color: '#1E40AF', marginBottom: 20
+                }}>
+                  <strong>📌 Key Rules for PDF Formatting:</strong>
+                  <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
+                    <li>Start each question with <code>Question 1:</code> or <code>Q1.</code> or <code>1.</code></li>
+                    <li>Label options as <code>A)</code>, <code>B)</code>, <code>C)</code>, <code>D)</code> (or <code>A.</code>, <code>B.</code>, etc.)</li>
+                    <li>Specify answer using <code>Ans: A</code> (or <code>Ans: Option A</code> / <code>Answer: B</code>)</li>
+                    <li>Specify optional marks using <code>Marks: 1</code> (Defaults to 1 if omitted)</li>
+                  </ul>
+                </div>
+
                 <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem' }}>Excel / CSV Column Structure</h4>
                 <div style={{ overflowX: 'auto', marginBottom: 16 }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
