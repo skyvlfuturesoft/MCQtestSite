@@ -319,6 +319,13 @@ p {
   transition: all var(--transition-base);
 }
 
+@media (max-width: 768px) {
+  .navbar,
+  .mobile-menu {
+    display: none !important;
+  }
+}
+
 .navbar.scrolled {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
@@ -1728,6 +1735,12 @@ img, svg {
   min-height: calc(100vh - 70px);
   display: flex;
   align-items: center;
+}
+
+@media (max-width: 768px) {
+  .hero-redesign {
+    padding-top: 36px !important;
+  }
 }
 
 .hero-container {

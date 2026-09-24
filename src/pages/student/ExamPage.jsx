@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
-import { Clock, AlertTriangle, ChevronRight, ChevronLeft, Send, PauseCircle } from 'lucide-react';
+import { Clock, AlertTriangle, ChevronRight, ChevronLeft, Send, PauseCircle, CheckCircle2, Maximize } from 'lucide-react';
 import useExamProctor from '../../hooks/useExamProctor';
 import ViolationModal from '../../components/ViolationModal';
 import '../../app.css';
@@ -20,9 +20,32 @@ export default function ExamPage() {
   const [violations, setViolations] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [error, setError] = useState('');
   
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [requireFullscreen, setRequireFullscreen] = useState(false);
+
+  const isFullscreenActive = () => {
+    return !!(
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement
+    );
+  };
+
+  const enterFullscreen = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch(() => {});
+    } else if (elem.webkitRequestFullscreen) {
+      elem.webkitRequestFullscreen().catch(() => {});
+    } else if (elem.msRequestFullscreen) {
+      elem.msRequestFullscreen().catch(() => {});
+    }
+    setRequireFullscreen(false);
+  };
   
   const warningRef = useRef(false);
   const timerRef = useRef(null);
@@ -85,6 +108,12 @@ export default function ExamPage() {
     loadExam();
   }, [attemptId, navigate]);
 
+  useEffect(() => {
+    if (!loading && !isFullscreenActive()) {
+      enterFullscreen();
+    }
+  }, [loading]);
+
   // Proctoring Hook
   const {
     violationCount: hookViolationCount,
@@ -93,11 +122,11 @@ export default function ExamPage() {
     warningMessage,
     isFinalWarning,
     isPaused
-  } = useExamProctor(attemptId, currentIdx, answers, timeLeft, () => submitExam(true), violations);
+  } = useExamProctor(attemptId, currentIdx, answers, timeLeft, () => submitExam(true), violations, submitting || submittingRef.current);
 
   // Timer loop
   useEffect(() => {
-    if (loading || timeLeft <= 0 || submitting || isPaused) return;
+    if (loading || timeLeft <= 0 || submitting || submittingRef.current || isPaused) return;
 
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -152,15 +181,6 @@ export default function ExamPage() {
             await new Promise((r) => setTimeout(r, 1000));
           }
         }
-        
-        await api('/api/events/log', {
-          method: 'POST',
-          body: {
-            attempt_id: attemptId,
-            event_type: 'answer_saved',
-            details: { question_id: qId, option_index: isMcq ? val : null, answer_text: isMcq ? null : val }
-          }
-        });
       });
       
       await Promise.all(promises);
@@ -190,19 +210,34 @@ export default function ExamPage() {
   };
 
   const submitExam = async (isAuto = false) => {
-    if (submitting) return;
+    if (submitting || submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     clearInterval(timerRef.current);
+
+    // Safely exit full-screen mode before redirecting to result page
+    if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen().catch(() => {});
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen().catch(() => {});
+      }
+    }
 
     // Flush remaining dirty answers
     await saveDirtyAnswers();
 
     try {
       await api(`/api/attempts/${attemptId}/submit?auto=${isAuto}`, { method: 'POST' });
+      setShowSubmitConfirm(false);
       navigate(`/student/result/${attemptId}`, { replace: true });
     } catch (err) {
       setError(err.message || 'Submission failed');
+      submittingRef.current = false;
       setSubmitting(false);
+      setShowSubmitConfirm(false);
     }
   };
 
@@ -228,6 +263,12 @@ export default function ExamPage() {
     );
   }
 
+  const answeredCount = questions.filter((q) => {
+    const ans = answers[q.id];
+    return ans !== undefined && ans !== null && ans !== '';
+  }).length;
+  const unansweredCount = Math.max(0, questions.length - answeredCount);
+
   const currentQuestion = questions[currentIdx];
 
   return (
@@ -238,9 +279,40 @@ export default function ExamPage() {
             <h3>{attempt?.exams?.title}</h3>
             <span style={{ fontSize: '0.85rem', opacity: 0.8 }}>Active Session</span>
           </div>
-          <div className={`exam-timer ${timeLeft < 120 ? 'warning' : ''}`}>
-            <Clock size={18} />
-            {formatTime(timeLeft)}
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div className={`exam-timer ${timeLeft < 120 ? 'warning' : ''}`}>
+              <Clock size={18} />
+              {formatTime(timeLeft)}
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={async () => {
+                await saveDirtyAnswers();
+                handleManualSubmit();
+              }}
+              disabled={submitting}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                color: '#FFFFFF',
+                padding: '9px 18px',
+                borderRadius: 12,
+                fontWeight: 700,
+                fontSize: '0.88rem',
+                border: 'none',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                cursor: 'pointer'
+              }}
+              id="header-finish-exam-btn"
+            >
+              <Send size={16} />
+              <span>Finish Exam</span>
+            </button>
           </div>
         </header>
 
@@ -257,14 +329,7 @@ export default function ExamPage() {
           isOpen={showWarningModal}
           onClose={() => {
             setShowWarningModal(false);
-            const elem = document.documentElement;
-            if (elem.requestFullscreen) {
-              elem.requestFullscreen().catch(() => {});
-            } else if (elem.webkitRequestFullscreen) {
-              elem.webkitRequestFullscreen().catch(() => {});
-            } else if (elem.msRequestFullscreen) {
-              elem.msRequestFullscreen().catch(() => {});
-            }
+            enterFullscreen();
           }}
           message={warningMessage}
           isFinal={isFinalWarning}
@@ -272,40 +337,206 @@ export default function ExamPage() {
         />
 
         {showSubmitConfirm && (
-          <div className="modal-overlay" style={{ display: 'flex' }}>
-            <div className="modal-content" style={{ maxWidth: 450, padding: 32, textAlign: 'center' }}>
-              <div style={{
-                width: 64, height: 64, background: 'rgba(34, 197, 94, 0.1)', color: '#22C55E',
-                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 20px', fontSize: 28
-              }}>
-                ✓
+          <div className="modal-overlay" style={{ display: 'flex', position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 16 }}>
+            <div className="modal-content" style={{ maxWidth: 640, width: '100%', maxHeight: '90vh', overflowY: 'auto', background: '#FFFFFF', padding: '32px 28px', borderRadius: 24, boxShadow: '0 25px 70px rgba(0, 0, 0, 0.2)', textAlign: 'center' }}>
+              
+              {/* Modal Header — Centered */}
+              <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                <div style={{
+                  width: 58, height: 58, background: '#ECFDF5', color: '#10B981',
+                  borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 14px', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.2)'
+                }}>
+                  <CheckCircle2 size={32} />
+                </div>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0', textAlign: 'center' }}>
+                  Confirm & Submit Examination
+                </h3>
+                <p style={{ color: '#0284C7', fontSize: '0.92rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>
+                  {attempt?.exams?.title}
+                </p>
               </div>
-              <h3 style={{ marginBottom: 12 }}>Submit Examination?</h3>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: '0.95rem', lineHeight: 1.5 }}>
-                Are you sure you want to finish and submit your exam? You cannot modify your answers or return to the exam after this.
-              </p>
-              <div style={{ display: 'flex', gap: 16 }}>
+
+              {/* Confirmation Definition Text — Centered Box */}
+              <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '14px 18px', borderRadius: 14, marginBottom: 18, textAlign: 'center' }}>
+                <p style={{
+                  fontSize: '0.88rem', color: '#475569', lineHeight: 1.55,
+                  textAlign: 'center', margin: 0, fontWeight: 500
+                }}>
+                  Are you sure you want to finish and submit your examination? Once confirmed, your answers will be evaluated and recorded.
+                </p>
+              </div>
+
+              {/* Summary Metric Cards — Centered */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18, textAlign: 'center' }}>
+                <div style={{ background: '#F0F7FF', border: '1px solid #BAE6FD', padding: '12px 10px', borderRadius: 12, textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#0284C7', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0369A1', marginTop: 2 }}>{questions.length}</div>
+                </div>
+
+                <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', padding: '12px 10px', borderRadius: 12, textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Answered</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#047857', marginTop: 2 }}>{answeredCount}</div>
+                </div>
+
+                <div style={{ background: unansweredCount > 0 ? '#FFFBEB' : '#F8FAFC', border: `1px solid ${unansweredCount > 0 ? '#FDE68A' : '#E2E8F0'}`, padding: '12px 10px', borderRadius: 12, textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: unansweredCount > 0 ? '#D97706' : '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Unanswered</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: unansweredCount > 0 ? '#B45309' : '#475569', marginTop: 2 }}>{unansweredCount}</div>
+                </div>
+              </div>
+
+              {/* Question Breakdown Preview Grid Numbers */}
+              <div style={{ marginBottom: 16, textAlign: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F172A' }}>Question Grid:</span>
+                  <span style={{ fontSize: '0.78rem', color: '#64748B' }}>Click number to jump to question</span>
+                </div>
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(36px, 1fr))', gap: 6,
+                  maxHeight: 110, overflowY: 'auto', padding: 10, background: '#F8FAFC', borderRadius: 12, border: '1px solid #E2E8F0'
+                }}>
+                  {questions.map((q, idx) => {
+                    const isAns = answers[q.id] !== undefined && answers[q.id] !== null && answers[q.id] !== '';
+                    return (
+                      <button
+                        key={q.id}
+                        type="button"
+                        onClick={() => {
+                          setCurrentIdx(idx);
+                          setShowSubmitConfirm(false);
+                        }}
+                        title={isAns ? `Question ${idx + 1}: Answered` : `Question ${idx + 1}: Unanswered`}
+                        style={{
+                          width: '100%', height: 34, borderRadius: 8, border: 'none',
+                          fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                          background: isAns ? '#10B981' : '#E2E8F0',
+                          color: isAns ? '#FFFFFF' : '#475569',
+                          boxShadow: isAns ? '0 2px 6px rgba(16, 185, 129, 0.25)' : 'none',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        {idx + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Full Questions Preview List */}
+              <div style={{ marginBottom: 18, textAlign: 'left' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0F172A' }}>All Questions Preview:</span>
+                  <span style={{ fontSize: '0.78rem', color: '#64748B' }}>{questions.length} questions listed below</span>
+                </div>
+                <div style={{
+                  maxHeight: 220, overflowY: 'auto', paddingRight: 6, background: '#FAFAFA',
+                  padding: 10, borderRadius: 14, border: '1px solid #E2E8F0'
+                }}>
+                  {questions.map((q, idx) => {
+                    const ansVal = answers[q.id];
+                    const isAns = ansVal !== undefined && ansVal !== null && ansVal !== '';
+                    let selectedDisplay = '';
+                    if (isAns) {
+                      if (typeof ansVal === 'number' && q.options && q.options[ansVal] !== undefined) {
+                        selectedDisplay = `Selected: ${String.fromCharCode(65 + ansVal)}. ${q.options[ansVal]}`;
+                      } else {
+                        selectedDisplay = `Selected: ${ansVal}`;
+                      }
+                    }
+
+                    return (
+                      <div
+                        key={q.id}
+                        onClick={() => {
+                          setCurrentIdx(idx);
+                          setShowSubmitConfirm(false);
+                        }}
+                        style={{
+                          background: isAns ? '#F0FDF4' : '#FFFBEB',
+                          border: `1px solid ${isAns ? '#BBF7D0' : '#FDE68A'}`,
+                          borderRadius: 12,
+                          padding: '10px 12px',
+                          marginBottom: 8,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.84rem', color: '#0F172A' }}>
+                            Question {idx + 1}
+                          </span>
+                          <span style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            background: isAns ? '#10B981' : '#F59E0B',
+                            color: '#FFFFFF'
+                          }}>
+                            {isAns ? 'Answered' : 'Unanswered'}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '0.82rem', color: '#334155', margin: '0 0 4px 0', lineHeight: 1.4, fontWeight: 500 }}>
+                          {q.question_text}
+                        </p>
+                        {isAns ? (
+                          <div style={{ fontSize: '0.78rem', color: '#047857', fontWeight: 600 }}>
+                            {selectedDisplay}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '0.78rem', color: '#B45309', fontStyle: 'italic' }}>
+                            No answer selected yet. Click to review.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Unanswered Questions Warning Alert — Centered */}
+              {unansweredCount > 0 && (
+                <div style={{
+                  background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E',
+                  padding: '12px 16px', borderRadius: 12, fontSize: '0.85rem', fontWeight: 500,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 20, textAlign: 'center'
+                }}>
+                  <AlertTriangle size={18} style={{ flexShrink: 0 }} />
+                  <span>You have {unansweredCount} unanswered question(s). You can go back to complete them.</span>
+                </div>
+              )}
+
+              {/* Action Buttons — Submit Button Aligned to Right */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, marginTop: 4 }}>
                 <button
                   className="btn btn-secondary"
-                  style={{ flex: 1 }}
+                  style={{ padding: '12px 20px', borderRadius: 12, fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer' }}
                   onClick={() => setShowSubmitConfirm(false)}
                   id="confirm-submit-cancel"
                 >
-                  Cancel
+                  ← Back to Exam
                 </button>
                 <button
                   className="btn btn-primary"
-                  style={{ flex: 1, background: '#22C55E' }}
+                  style={{
+                    padding: '12px 26px', borderRadius: 12, fontWeight: 700, fontSize: '0.92rem',
+                    background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                    boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+                    marginLeft: 'auto',
+                    border: 'none',
+                    color: '#FFFFFF',
+                    cursor: 'pointer'
+                  }}
                   onClick={() => {
-                    setShowSubmitConfirm(false);
                     submitExam(false);
                   }}
+                  disabled={submitting}
                   id="confirm-submit-button"
                 >
-                  Yes, Submit
+                  {submitting ? 'Submitting...' : 'Confirm & Submit Exam →'}
                 </button>
               </div>
+
             </div>
           </div>
         )}
@@ -323,9 +554,20 @@ export default function ExamPage() {
                 </div>
               )}
               <div className="question-text">
-                <span style={{ color: 'var(--primary)', marginRight: 10 }}>
-                  Question {currentIdx + 1} of {questions.length}
-                </span>
+                <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                  <span style={{
+                    color: '#0066FF',
+                    background: '#EFF6FF',
+                    padding: '6px 18px',
+                    borderRadius: '9999px',
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    border: '1px solid #BFDBFE',
+                    display: 'inline-block'
+                  }}>
+                    Question {currentIdx + 1} of {questions.length}
+                  </span>
+                </div>
                 {currentQuestion.image_url && (
                   <div style={{ margin: '16px 0', textAlign: 'center' }}>
                     <img
@@ -457,6 +699,37 @@ export default function ExamPage() {
                   Unanswered
                 </div>
               </div>
+
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={async () => {
+                  await saveDirtyAnswers();
+                  handleManualSubmit();
+                }}
+                disabled={submitting}
+                style={{
+                  width: '100%',
+                  marginTop: 20,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                  color: '#FFFFFF',
+                  padding: '12px',
+                  borderRadius: 12,
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  border: 'none',
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                  cursor: 'pointer'
+                }}
+                id="sidebar-finish-exam-btn"
+              >
+                <Send size={16} />
+                <span>Finish Exam</span>
+              </button>
             </aside>
           </div>
         )}

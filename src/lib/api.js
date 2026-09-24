@@ -2,18 +2,57 @@ import { supabase } from './supabase';
 
 export const API_URL = '';
 
+let userCache = null;
+let userCacheTime = 0;
+const USER_CACHE_TTL = 30000; // Cache profile for 30 seconds in memory
+
+export function clearUserCache() {
+  userCache = null;
+  userCacheTime = 0;
+}
+
 async function getCurrentUser() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  const now = Date.now();
+  if (userCache && (now - userCacheTime < USER_CACHE_TTL)) {
+    return userCache;
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
+  if (!user) {
+    userCache = null;
+    return null;
+  }
 
   // Try to read profile
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from('profiles')
     .select('id, name, email, role')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
-  return profile || { id: user.id, email: user.email, role: 'student', name: user.email.split('@')[0] };
+  if (!profile) {
+    const fallbackProfile = {
+      id: user.id,
+      email: user.email || '',
+      name: user.user_metadata?.name || user.email?.split('@')[0] || 'Student',
+      role: user.user_metadata?.role || 'student'
+    };
+    try {
+      const { data: createdProfile } = await supabase
+        .from('profiles')
+        .upsert(fallbackProfile, { onConflict: 'id' })
+        .select('id, name, email, role')
+        .maybeSingle();
+      profile = createdProfile || fallbackProfile;
+    } catch (_) {
+      profile = fallbackProfile;
+    }
+  }
+
+  userCache = profile;
+  userCacheTime = now;
+  return userCache;
 }
 
 export async function api(endpoint, options = {}) {
@@ -306,6 +345,17 @@ export async function api(endpoint, options = {}) {
         throw new Error('Only students can start exams');
       }
 
+      // Ensure student profile exists in database before inserting/querying attempts
+      const { data: profileCheck } = await supabase.from('profiles').select('id').eq('id', currentUser.id).maybeSingle();
+      if (!profileCheck) {
+        await supabase.from('profiles').upsert({
+          id: currentUser.id,
+          name: currentUser.name || currentUser.email?.split('@')[0] || 'Student',
+          email: currentUser.email || '',
+          role: currentUser.role || 'student'
+        }, { onConflict: 'id' });
+      }
+
       // Skip any 'retake_granted' attempts — admin has cleared the way for a fresh attempt
       // Check in_progress
       const { data: existingList } = await supabase
@@ -447,16 +497,20 @@ export async function api(endpoint, options = {}) {
       const attemptId = attemptAnswerMatch[1];
       const { question_id, selected_option, selected_answer_text } = body;
 
-      const { data: attempt } = await supabase.from('attempts').select('*').eq('id', attemptId).single();
+      const { data: attempt } = await supabase
+        .from('attempts')
+        .select('student_id, status, started_at, exam_id, exams(duration)')
+        .eq('id', attemptId)
+        .single();
+
       if (!attempt) throw new Error('Attempt not found');
       if (attempt.student_id !== currentUser.id) throw new Error('Not your attempt');
       if (attempt.status !== 'in_progress') throw new Error('Attempt is not in progress');
 
       // Check timer
-      const { data: exam } = await supabase.from('exams').select('duration').eq('id', attempt.exam_id).single();
-      if (exam) {
+      if (attempt.exams?.duration) {
         const elapsed = (new Date() - new Date(attempt.started_at)) / 1000;
-        if (elapsed > exam.duration * 60 + 30) {
+        if (elapsed > attempt.exams.duration * 60 + 30) {
           await api(`/api/attempts/${attemptId}/submit`, { method: 'POST', params: { auto: 'true' } });
           throw new Error('Timer expired. Exam auto-submitted.');
         }
@@ -1497,35 +1551,20 @@ export async function api(endpoint, options = {}) {
     if (cleanEndpoint === '/api/session/heartbeat' && method === 'POST') {
       const { attempt_id, current_question_index, answered_count, time_remaining, browser, os, ip_address } = body;
       
-      const { data: existing } = await supabase.from('live_sessions').select('id').eq('attempt_id', attempt_id).maybeSingle();
-      
-      let res;
-      if (existing) {
-        res = await supabase.from('live_sessions').update({
-          current_question_index,
-          answered_count,
-          time_remaining,
-          browser,
-          os,
-          ip_address,
-          last_heartbeat: new Date().toISOString()
-        }).eq('attempt_id', attempt_id).select().single();
-      } else {
-        res = await supabase.from('live_sessions').insert({
-          attempt_id,
-          student_id: currentUser.id,
-          current_question_index,
-          answered_count,
-          time_remaining,
-          browser,
-          os,
-          ip_address,
-          last_heartbeat: new Date().toISOString()
-        }).select().single();
-      }
+      const { data, error } = await supabase.from('live_sessions').upsert({
+        attempt_id,
+        student_id: currentUser.id,
+        current_question_index,
+        answered_count,
+        time_remaining,
+        browser,
+        os,
+        ip_address,
+        last_heartbeat: new Date().toISOString()
+      }, { onConflict: 'attempt_id' }).select().single();
 
-      if (res.error) throw res.error;
-      return { success: true, live_session: res.data };
+      if (error) throw error;
+      return { success: true, live_session: data };
     }
 
     // EXAM WARNING ISSUANCE

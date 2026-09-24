@@ -29,6 +29,16 @@ export default function StudentDashboard() {
   const error = examsError?.message || attemptsError?.message || '';
 
   const handleStartExam = async (examId) => {
+    // Request full-screen mode immediately on user click gesture
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch(() => {});
+    } else if (elem.webkitRequestFullscreen) {
+      elem.webkitRequestFullscreen().catch(() => {});
+    } else if (elem.msRequestFullscreen) {
+      elem.msRequestFullscreen().catch(() => {});
+    }
+
     try {
       const data = await api(`/api/attempts/start?exam_id=${examId}`, { method: 'POST' });
       navigate(`/student/exam/${data.attempt.id}`);

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
-export default function useExamProctor(attemptId, currentIdx, answers, timeLeft, submitExam, initialViolations) {
+export default function useExamProctor(attemptId, currentIdx, answers, timeLeft, submitExam, initialViolations, isSubmitting = false) {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [violationCount, setViolationCount] = useState(0);
@@ -23,6 +23,8 @@ export default function useExamProctor(attemptId, currentIdx, answers, timeLeft,
   const timeLeftRef = useRef(timeLeft);
   const violationCountRef = useRef(violationCount);
   const isPausedRef = useRef(isPaused);
+  const isSubmittingRef = useRef(isSubmitting);
+  isSubmittingRef.current = isSubmitting;
 
   // Sync refs to avoid stale closures in event listeners
   useEffect(() => { currentIdxRef.current = currentIdx; }, [currentIdx]);
@@ -143,7 +145,7 @@ export default function useExamProctor(attemptId, currentIdx, answers, timeLeft,
 
     // Initial heartbeat
     sendHeartbeat();
-    const interval = setInterval(sendHeartbeat, 10000); // every 10 seconds
+    const interval = setInterval(sendHeartbeat, 20000); // every 20 seconds
 
     return () => {
       active = false;
@@ -159,7 +161,7 @@ export default function useExamProctor(attemptId, currentIdx, answers, timeLeft,
     const meta = getProctorMetadata();
 
     const reportViolation = async (type) => {
-      if (isPausedRef.current) return;
+      if (isPausedRef.current || isSubmittingRef.current) return;
 
       const nowTime = Date.now();
       if (nowTime - lastViolationTimeRef.current < 1500) {
@@ -210,25 +212,39 @@ export default function useExamProctor(attemptId, currentIdx, answers, timeLeft,
 
     // 1. Tab Switch (Visibility Change)
     const handleVisibilityChange = () => {
-      if (document.hidden) {
+      if (document.hidden && !isSubmittingRef.current) {
         reportViolation('tab_switch');
       }
     };
 
     // 2. Window Blur (Focus Loss)
     const handleWindowBlur = () => {
-      reportViolation('window_blur');
+      if (!isSubmittingRef.current) {
+        reportViolation('window_blur');
+      }
+    };
+
+    const getFullscreenElement = () => {
+      return (
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement ||
+        null
+      );
     };
 
     // 3. Fullscreen Exit
     const handleFullscreenChange = () => {
-      if (document.fullscreenElement === null && !isPausedRef.current) {
+      const activeFs = getFullscreenElement();
+      if (!activeFs && !isPausedRef.current && !isSubmittingRef.current) {
         reportViolation('fullscreen_exit');
       }
     };
 
     // 4. Keydown (PrintScreen, Ctrl+P, Copy/Paste block)
     const handleKeyDown = (e) => {
+      if (isSubmittingRef.current) return;
       if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P' || e.key === 'c' || e.key === 'C' || e.key === 'v' || e.key === 'V')) {
         e.preventDefault();
         reportViolation('copy_paste_right_click');
@@ -241,22 +257,26 @@ export default function useExamProctor(attemptId, currentIdx, answers, timeLeft,
 
     // 5. Context Menu (Right Click)
     const handleContextMenu = (e) => {
+      if (isSubmittingRef.current) return;
       e.preventDefault();
       reportViolation('copy_paste_right_click');
     };
 
     // 6. Copy / Paste events
     const handleCopy = (e) => {
+      if (isSubmittingRef.current) return;
       e.preventDefault();
       reportViolation('copy_paste_right_click');
     };
     const handlePaste = (e) => {
+      if (isSubmittingRef.current) return;
       e.preventDefault();
       reportViolation('copy_paste_right_click');
     };
 
     // 7. DevTools Open (Resize check) & Multi-monitor Check
     const handleResize = () => {
+      if (isSubmittingRef.current) return;
       const threshold = 160;
       const widthDiff = window.outerWidth - window.innerWidth;
       const heightDiff = window.outerHeight - window.innerHeight;
@@ -270,6 +290,7 @@ export default function useExamProctor(attemptId, currentIdx, answers, timeLeft,
 
     // 8. Prevent reload/refresh
     const handleBeforeUnload = (e) => {
+      if (isSubmittingRef.current) return;
       e.preventDefault();
       e.returnValue = 'Are you sure you want to refresh? Your violation count will increase.';
       return e.returnValue;
@@ -283,7 +304,7 @@ export default function useExamProctor(attemptId, currentIdx, answers, timeLeft,
       }
     };
     const handleOffline = () => {
-      if (!offlineTimerRef.current) {
+      if (!offlineTimerRef.current && !isSubmittingRef.current) {
         offlineTimerRef.current = setTimeout(() => {
           reportViolation('network_disconnect');
         }, 15000); // 15s grace period
@@ -294,6 +315,9 @@ export default function useExamProctor(attemptId, currentIdx, answers, timeLeft,
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleWindowBlur);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('contextmenu', handleContextMenu);
     document.addEventListener('copy', handleCopy);
@@ -311,6 +335,9 @@ export default function useExamProctor(attemptId, currentIdx, answers, timeLeft,
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleWindowBlur);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('contextmenu', handleContextMenu);
       document.removeEventListener('copy', handleCopy);
