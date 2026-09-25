@@ -701,21 +701,89 @@ export async function api(endpoint, options = {}) {
       }
 
       const [answersRes, questionsRes] = await Promise.all([
-        supabase.from('answers').select('id, attempt_id, question_id, selected_option, selected_answer_text, is_correct, created_at, questions(question_text, options, correct_answer, accepted_answers, question_type, image_url, marks)').eq('attempt_id', attemptId),
-        supabase.from('questions').select('id, marks').eq('exam_id', attempt.exam_id)
+        supabase.from('answers').select('id, attempt_id, question_id, selected_option, selected_answer_text, is_correct, created_at, questions(id, question_text, options, correct_answer, accepted_answers, question_type, image_url, marks)').eq('attempt_id', attemptId),
+        supabase.from('questions').select('id, question_text, options, correct_answer, accepted_answers, question_type, image_url, marks, created_at').eq('exam_id', attempt.exam_id).order('created_at', { ascending: true })
       ]);
 
-      const examTotal = (questionsRes.data || []).reduce((sum, q) => sum + (q.marks || 1), 0);
+      let allQuestions = questionsRes.data || [];
+      if (attemptId && currentUser.role !== 'admin') {
+        let seed = 0;
+        for (let i = 0; i < attemptId.length; i++) {
+          seed += attemptId.charCodeAt(i);
+        }
+        const random = () => {
+          const x = Math.sin(seed++) * 10000;
+          return x - Math.floor(x);
+        };
+        for (let i = allQuestions.length - 1; i > 0; i--) {
+          const j = Math.floor(random() * (i + 1));
+          [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
+        }
+      }
+
+      const answersMap = {};
+      (answersRes.data || []).forEach(a => {
+        answersMap[a.question_id] = a;
+      });
+
+      // Build complete answers array containing ALL questions (attended + unattended)
+      let correct_count = 0;
+      let wrong_count = 0;
+      let skipped_count = 0;
+
+      const completeAnswers = allQuestions.map((q) => {
+        const existing = answersMap[q.id];
+        const qType = q.question_type || 'mcq';
+
+        if (existing) {
+          const isSkipped = (qType === 'mcq' || qType === 'image_mcq')
+            ? (existing.selected_option === null || existing.selected_option === undefined)
+            : (!existing.selected_answer_text || String(existing.selected_answer_text).trim() === '');
+
+          if (isSkipped) {
+            skipped_count++;
+          } else if (existing.is_correct) {
+            correct_count++;
+          } else {
+            wrong_count++;
+          }
+
+          return {
+            ...existing,
+            is_unattended: isSkipped,
+            questions: q
+          };
+        }
+
+        // Unattended / Unanswered question
+        skipped_count++;
+        return {
+          id: `unattended-${q.id}`,
+          attempt_id: attemptId,
+          question_id: q.id,
+          selected_option: null,
+          selected_answer_text: null,
+          is_correct: false,
+          is_unattended: true,
+          questions: q
+        };
+      });
+
+      const examTotal = allQuestions.reduce((sum, q) => sum + (q.marks || 1), 0);
       const dynamicTotalMarks = Math.max(attempt.total_marks || 0, attempt.score || 0, examTotal);
       const dynamicPercentage = dynamicTotalMarks > 0 ? Math.round(((attempt.score || 0) / dynamicTotalMarks) * 100) : (attempt.percentage || 0);
 
       const updatedAttempt = {
         ...attempt,
         total_marks: dynamicTotalMarks,
-        percentage: dynamicPercentage
+        percentage: dynamicPercentage,
+        correct_count: attempt.correct_count !== undefined && attempt.correct_count !== null ? attempt.correct_count : correct_count,
+        wrong_count: attempt.wrong_count !== undefined && attempt.wrong_count !== null ? attempt.wrong_count : wrong_count,
+        skipped_count: attempt.skipped_count !== undefined && attempt.skipped_count !== null ? attempt.skipped_count : skipped_count,
+        total_questions: allQuestions.length
       };
 
-      return { attempt: updatedAttempt, answers: answersRes.data || [] };
+      return { attempt: updatedAttempt, answers: completeAnswers };
     }
 
     // MY ATTEMPTS
