@@ -50,18 +50,28 @@ export default function AdminLiveCards() {
 
   useEffect(() => {
     let failCount = 0;
+    let isCancelled = false;
+
     const pollStats = async () => {
+      if (document.hidden || isCancelled) return;
       try {
         await loadStats();
         failCount = 0;
       } catch (e) {
         failCount++;
-        if (failCount === 1) console.warn('AdminLiveCards: backend unreachable, retrying silently.');
+        if (e?.message?.includes('Session expired') || e?.message?.includes('401') || failCount >= 5) {
+          isCancelled = true;
+        }
       }
     };
     pollStats();
-    const interval = setInterval(pollStats, 5000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (!isCancelled) pollStats();
+    }, 12000);
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   return (

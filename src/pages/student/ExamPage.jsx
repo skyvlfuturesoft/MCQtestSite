@@ -151,11 +151,23 @@ export default function ExamPage() {
   };
 
   const saveDirtyAnswers = async () => {
+    // If a save is already in progress, wait for it to complete
+    if (savingRef.current) {
+      let waitCount = 0;
+      while (savingRef.current && waitCount < 30) {
+        await new Promise((r) => setTimeout(r, 100));
+        waitCount++;
+      }
+    }
+
     const dirty = { ...dirtyAnswersRef.current };
-    if (Object.keys(dirty).length === 0 || savingRef.current) return;
+    if (Object.keys(dirty).length === 0) return;
     
     savingRef.current = true;
-    dirtyAnswersRef.current = {};
+    // Remove items being saved from dirty ref
+    Object.keys(dirty).forEach((qId) => {
+      delete dirtyAnswersRef.current[qId];
+    });
     
     try {
       const promises = Object.entries(dirty).map(async ([qId, val]) => {
@@ -165,7 +177,7 @@ export default function ExamPage() {
         const bodyPayload = {
           question_id: qId,
           selected_option: isMcq ? val : null,
-          selected_answer_text: isMcq ? null : val
+          selected_answer_text: isMcq ? null : String(val || '')
         };
 
         while (retries > 0 && !success) {
@@ -178,7 +190,7 @@ export default function ExamPage() {
           } catch (err) {
             retries--;
             if (retries === 0) throw err;
-            await new Promise((r) => setTimeout(r, 1000));
+            await new Promise((r) => setTimeout(r, 500));
           }
         }
       });
@@ -230,7 +242,10 @@ export default function ExamPage() {
     await saveDirtyAnswers();
 
     try {
-      await api(`/api/attempts/${attemptId}/submit?auto=${isAuto}`, { method: 'POST' });
+      await api(`/api/attempts/${attemptId}/submit?auto=${isAuto}`, {
+        method: 'POST',
+        body: { answers }
+      });
       setShowSubmitConfirm(false);
       navigate(`/student/result/${attemptId}`, { replace: true });
     } catch (err) {

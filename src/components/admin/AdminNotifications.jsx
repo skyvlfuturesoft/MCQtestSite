@@ -8,10 +8,13 @@ export default function AdminNotifications() {
 
   useEffect(() => {
     let lastCount = 0;
+    let isCancelled = false;
 
     const poll = async () => {
+      if (document.hidden) return;
       try {
         const data = await api('/api/activity-feed');
+        if (isCancelled) return;
         const events = data.events || [];
         if (events.length > lastCount && lastCount > 0) {
           const newEvents = events.slice(0, events.length - lastCount);
@@ -30,13 +33,20 @@ export default function AdminNotifications() {
         }
         lastCount = events.length;
       } catch (e) {
-        // Silently fail polling
+        if (e?.message?.includes('Session expired') || e?.message?.includes('401')) {
+          isCancelled = true;
+        }
       }
     };
 
     poll();
-    const interval = setInterval(poll, 3000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (!isCancelled) poll();
+    }, 10000);
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   // Auto dismiss after 6 seconds

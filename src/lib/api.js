@@ -521,7 +521,7 @@ export async function api(endpoint, options = {}) {
         question_id,
         selected_option,
         selected_answer_text
-      });
+      }, { onConflict: 'attempt_id, question_id' });
       if (error) throw error;
 
       return { success: true };
@@ -541,6 +541,21 @@ export async function api(endpoint, options = {}) {
 
       if (attempt.status !== 'in_progress') {
         return { attempt, message: 'Already submitted' };
+      }
+
+      // If client passed current answers dictionary, flush & upsert to DB first for 100% accuracy
+      if (body && body.answers && typeof body.answers === 'object') {
+        const upsertPromises = Object.entries(body.answers).map(([qId, val]) => {
+          if (val === undefined || val === null) return Promise.resolve();
+          const isMcq = typeof val === 'number';
+          return supabase.from('answers').upsert({
+            attempt_id: attemptId,
+            question_id: qId,
+            selected_option: isMcq ? val : null,
+            selected_answer_text: isMcq ? null : String(val || '')
+          }, { onConflict: 'attempt_id, question_id' });
+        });
+        await Promise.all(upsertPromises);
       }
 
       const { data: exam } = await supabase.from('exams').select('*').eq('id', attempt.exam_id).single();

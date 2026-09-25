@@ -37,7 +37,7 @@ function LandingPage() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Navbar />
-      <main style={{ minHeight: '100vh', background: '#F8FAFC' }}>
+      <main className="landing-page-main" style={{ minHeight: '100vh', background: '#F8FAFC' }}>
         <Hero />
         <Features />
         <Workflow />

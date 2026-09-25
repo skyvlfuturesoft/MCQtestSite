@@ -28,9 +28,29 @@ export default function LiveStudentTable() {
   };
 
   useEffect(() => {
-    loadStudents();
-    const interval = setInterval(loadStudents, 8000);
-    return () => clearInterval(interval);
+    let failCount = 0;
+    let isCancelled = false;
+
+    const poll = async () => {
+      if (document.hidden || isCancelled) return;
+      try {
+        await loadStudents();
+        failCount = 0;
+      } catch (e) {
+        failCount++;
+        if (e?.message?.includes('Session expired') || e?.message?.includes('401') || failCount >= 5) {
+          isCancelled = true;
+        }
+      }
+    };
+    poll();
+    const interval = setInterval(() => {
+      if (!isCancelled) poll();
+    }, 12000);
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   // Reset page when filters change

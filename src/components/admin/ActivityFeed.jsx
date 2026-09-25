@@ -7,19 +7,30 @@ export default function ActivityFeed() {
 
   useEffect(() => {
     let failCount = 0;
+    let isCancelled = false;
+
     const load = async () => {
+      if (document.hidden || isCancelled) return;
       try {
         const data = await api('/api/activity-feed');
+        if (isCancelled) return;
         failCount = 0;
         setEvents(data.events || []);
       } catch (e) {
         failCount++;
-        if (failCount === 1) console.warn('Activity feed: backend unreachable, retrying silently.');
+        if (e?.message?.includes('Session expired') || e?.message?.includes('401') || failCount >= 5) {
+          isCancelled = true;
+        }
       }
     };
     load();
-    const interval = setInterval(load, 5000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (!isCancelled) load();
+    }, 10000);
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   const getEmoji = (type) => {
