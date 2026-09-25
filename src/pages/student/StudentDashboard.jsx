@@ -142,38 +142,58 @@ export default function StudentDashboard() {
                       {attempt && attempt.status !== 'in_progress' ? (
                         <div style={{ marginTop: 12 }}>
                           {attempt.status === 'terminated' ? (
-                            <div style={{ padding: '8px 12px', background: '#ffebee', color: '#c62828', borderRadius: 6, fontSize: '0.85rem', fontWeight: 600, textAlign: 'center' }}>
-                              Session Terminated
+                            <div>
+                              <div style={{ padding: '8px 12px', background: '#ffebee', color: '#c62828', borderRadius: 6, fontSize: '0.85rem', fontWeight: 600, textAlign: 'center', marginBottom: 6 }}>
+                                Session Terminated (Attempt Used)
+                              </div>
+                              <p style={{ fontSize: '0.75rem', color: '#888', textAlign: 'center', margin: 0 }}>
+                                Only 1 attempt allowed per student.
+                              </p>
                             </div>
                           ) : (
-                            <button
-                              className="btn btn-secondary"
-                              onClick={() => navigate(`/student/result/${attempt.id}`)}
-                              style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 8 }}
-                            >
-                              <Award size={16} />
-                              View Score ({attempt.score}/{attempt.total_marks})
-                            </button>
+                            <div>
+                              <button
+                                className="btn btn-secondary"
+                                onClick={() => navigate(`/student/result/${attempt.id}`)}
+                                style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 8 }}
+                              >
+                                <Award size={16} />
+                                View Score ({attempt.score}/{attempt.total_marks})
+                              </button>
+                              <p style={{ fontSize: '0.75rem', color: '#64748B', textAlign: 'center', marginTop: 6, marginBottom: 0 }}>
+                                ✓ Completed (1 of 1 attempt used)
+                              </p>
+                            </div>
                           )}
                         </div>
                       ) : attempt && attempt.status === 'in_progress' ? (
-                        <button
-                          className="btn btn-primary"
-                          onClick={() => navigate(`/student/exam/${attempt.id}`)}
-                          style={{ width: '100%', marginTop: 12, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 8 }}
-                        >
-                          <Play size={16} />
-                          Start Exam
-                        </button>
+                        <div style={{ marginTop: 12 }}>
+                          <button
+                            className="btn btn-primary"
+                            onClick={() => navigate(`/student/exam/${attempt.id}`)}
+                            style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 8, background: '#D97706', borderColor: '#D97706' }}
+                          >
+                            <Play size={16} />
+                            Resume Exam (In Progress)
+                          </button>
+                          <p style={{ fontSize: '0.75rem', color: '#D97706', textAlign: 'center', marginTop: 6, marginBottom: 0 }}>
+                            Exam is currently live. Complete your single attempt.
+                          </p>
+                        </div>
                       ) : (
-                        <button
-                          className="btn btn-primary"
-                          onClick={() => handleStartExam(exam.id)}
-                          style={{ width: '100%', marginTop: 12, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 8 }}
-                        >
-                          <Play size={16} />
-                          Start Exam
-                        </button>
+                        <div style={{ marginTop: 12 }}>
+                          <button
+                            className="btn btn-primary"
+                            onClick={() => handleStartExam(exam.id)}
+                            style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 8 }}
+                          >
+                            <Play size={16} />
+                            Start Exam
+                          </button>
+                          <p style={{ fontSize: '0.75rem', color: '#64748B', textAlign: 'center', marginTop: 6, marginBottom: 0 }}>
+                            Note: Only 1 attempt permitted.
+                          </p>
+                        </div>
                       )}
                     </div>
                   );

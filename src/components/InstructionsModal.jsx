@@ -102,6 +102,7 @@ export default function InstructionsModal({ isOpen, onClose }) {
                 General Guidelines
               </h4>
               <ul style={{ margin: 0, paddingLeft: '20px', color: '#475569', fontSize: '0.92rem', lineHeight: '1.7' }}>
+                <li><strong>Single Attempt Rule:</strong> Each student is permitted to attend and submit the examination <strong>only once</strong>.</li>
                 <li>Ensure you have a stable internet connection before beginning.</li>
                 <li>Each question carries 1 mark unless specified otherwise.</li>
                 <li>You can navigate between questions using the Question Navigator or Next/Previous buttons.</li>

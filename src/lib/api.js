@@ -395,30 +395,29 @@ export async function api(endpoint, options = {}) {
       const retakeGranted = retakeGrantedList?.[0];
 
       if (!retakeGranted) {
-        const { data: terminatedList } = await supabase
+        // Enforce strict single-attempt rule: check all past attempts for this student & exam
+        const { data: pastAttempts } = await supabase
           .from('attempts')
           .select('*')
           .eq('student_id', currentUser.id)
           .eq('exam_id', examId)
-          .eq('status', 'terminated')
-          .order('created_at', { ascending: false })
-          .limit(1);
+          .order('created_at', { ascending: false });
 
-        if (terminatedList?.[0]) {
-          throw new Error('Your examination session has been terminated due to security violations.');
+        const pastTerminated = (pastAttempts || []).find(a => a.status === 'terminated');
+        if (pastTerminated) {
+          throw new Error('Your examination session was terminated due to security violations. Each student is permitted to attend the test only once.');
         }
 
-        const { data: completedList } = await supabase
-          .from('attempts')
-          .select('*')
-          .eq('student_id', currentUser.id)
-          .eq('exam_id', examId)
-          .in('status', ['submitted', 'auto_submitted'])
-          .order('created_at', { ascending: false })
-          .limit(1);
+        const pastCompleted = (pastAttempts || []).find(a => 
+          ['submitted', 'auto_submitted', 'completed', 'evaluated'].includes(a.status)
+        );
+        if (pastCompleted) {
+          throw new Error('You have already attended and completed this exam. Each student is allowed only one attempt.');
+        }
 
-        if (completedList?.[0]) {
-          throw new Error('You have already completed this exam');
+        const anyExisting = (pastAttempts || []).find(a => a.status !== 'in_progress' && a.status !== 'retake_granted');
+        if (anyExisting) {
+          throw new Error('You have already attempted this exam. Each student is permitted to attend the test only once.');
         }
       }
 
